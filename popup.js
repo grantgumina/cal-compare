@@ -47,13 +47,14 @@ function saveEmail(email) {
   if (!emails.includes(email)) {
     emails.push(email);
     localStorage.setItem('savedEmails', JSON.stringify(emails));
+    console.log('Saved new email:', email);
+    console.log('Current saved emails:', emails);
   }
 }
 
 // Function to set up autocomplete for an input
 function setupAutocomplete(inputs) {
   inputs.forEach(input => {
-    // Create dropdown container
     const wrapper = document.createElement('div');
     wrapper.style.position = 'relative';
     input.parentNode.insertBefore(wrapper, input);
@@ -63,46 +64,32 @@ function setupAutocomplete(inputs) {
     dropdown.className = 'email-dropdown';
     wrapper.appendChild(dropdown);
 
-    // Add styles for dropdown
-    const style = document.createElement('style');
-    style.textContent = `
-      .email-dropdown {
-        display: none;
-        position: absolute;
-        width: 100%;
-        max-height: 150px;
-        overflow-y: auto;
-        border: 1px solid #ddd;
-        border-top: none;
-        background: white;
-        z-index: 1000;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      }
-      .email-option {
-        padding: 8px;
-        cursor: pointer;
-      }
-      .email-option:hover {
-        background-color: #f0f0f0;
-      }
-    `;
-    document.head.appendChild(style);
-
     // Input event handlers
     input.addEventListener('input', () => {
       const value = input.value.toLowerCase();
       const emails = getSavedEmails();
-      const matches = emails.filter(email => 
-        email.toLowerCase().includes(value)
-      );
+      const matches = value ? 
+        emails.filter(email => email.toLowerCase().includes(value)) : 
+        emails;
 
-      if (matches.length && value) {
+      if (matches.length) {
         dropdown.style.display = 'block';
         dropdown.innerHTML = matches
           .map(email => `<div class="email-option">${email}</div>`)
           .join('');
       } else {
         dropdown.style.display = 'none';
+      }
+    });
+
+    // Focus handler to show all options
+    input.addEventListener('focus', () => {
+      const emails = getSavedEmails();
+      if (emails.length) {
+        dropdown.style.display = 'block';
+        dropdown.innerHTML = emails
+          .map(email => `<div class="email-option">${email}</div>`)
+          .join('');
       }
     });
 
@@ -140,6 +127,12 @@ async function findOverlappingMeetings() {
       document.getElementById('results').innerHTML = 'Please enter at least 2 email addresses';
       return;
     }
+
+    // Save each valid email
+    calendarEmails.forEach(email => {
+      console.log('Saving email:', email);
+      saveEmail(email);
+    });
 
     console.log('Getting auth token...');
     // Modified auth token request
@@ -360,7 +353,7 @@ function addCalendarInput() {
   `;
   document.getElementById('calendar-inputs').appendChild(inputDiv);
   
-  // Set up autocomplete for the new input
+  // Setup autocomplete for the new input
   setupAutocomplete(inputDiv.querySelectorAll('.calendar-input'));
   calendarCount++;
 }
