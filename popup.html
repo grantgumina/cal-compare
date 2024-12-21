@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Calendar Overlap Finder</title>
+  <style>
+    body {
+      width: 400px;
+      padding: 10px;
+    }
+    .meeting {
+      margin: 10px 0;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .calendar-input {
+      margin: 5px 0;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <h2>Calendar Overlap Finder</h2>
+  <div id="calendar-inputs">
+    <div>
+      <input type="email" class="calendar-input" placeholder="First colleague's email">
+    </div>
+    <div>
+      <input type="email" class="calendar-input" placeholder="Second colleague's email">
+    </div>
+  </div>
+  <button id="addCalendar">Add Another Calendar</button>
+  <button id="findOverlaps">Find Overlapping Meetings</button>
+  <div id="results"></div>
+  <script src="popup.js"></script>
+</body>
+</html>
