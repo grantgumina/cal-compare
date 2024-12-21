@@ -17,6 +17,30 @@ document.addEventListener('DOMContentLoaded', () => {
   // Add date validation
   document.getElementById('start-date').addEventListener('change', validateDates);
   document.getElementById('end-date').addEventListener('change', validateDates);
+
+  // Convert existing inputs to new format
+  const existingInputs = document.querySelectorAll('#calendar-inputs > div');
+  existingInputs.forEach((div, index) => {
+    if (index >= 2) { // Only add delete buttons to additional inputs
+      const input = div.querySelector('.calendar-input');
+      if (input) {
+        div.className = 'input-row';
+        const wrapper = document.createElement('div');
+        wrapper.className = 'input-group';
+        div.innerHTML = ''; // Clear the div
+        wrapper.appendChild(input);
+        
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'delete-btn';
+        deleteBtn.innerHTML = '&times;';
+        deleteBtn.title = 'Remove email';
+        deleteBtn.addEventListener('click', () => div.remove());
+        wrapper.appendChild(deleteBtn);
+        
+        div.appendChild(wrapper);
+      }
+    }
+  });
 });
 
 // Helper function to format date as YYYY-MM-DD
@@ -421,10 +445,20 @@ function displayResults(overlappingMeetings, allEvents) {
 
 function addCalendarInput() {
   const inputDiv = document.createElement('div');
+  inputDiv.className = 'input-row';
   inputDiv.innerHTML = `
-    <input type="email" class="calendar-input" placeholder="Colleague's email #${calendarCount + 1}">
+    <div class="input-group">
+      <input type="email" class="calendar-input" placeholder="Colleague's email #${calendarCount + 1}">
+      <button class="delete-btn" title="Remove email">&times;</button>
+    </div>
   `;
   document.getElementById('calendar-inputs').appendChild(inputDiv);
+  
+  // Add click handler for delete button
+  const deleteBtn = inputDiv.querySelector('.delete-btn');
+  deleteBtn.addEventListener('click', () => {
+    inputDiv.remove();
+  });
   
   // Setup autocomplete for the new input
   setupAutocomplete(inputDiv.querySelectorAll('.calendar-input'));
