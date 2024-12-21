@@ -5,7 +5,34 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Set up autocomplete for initial inputs
   setupAutocomplete(document.querySelectorAll('.calendar-input'));
+
+  // Set default date range (today to 7 days from now)
+  const today = new Date();
+  const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+  
+  document.getElementById('start-date').value = formatDate(today);
+  document.getElementById('end-date').value = formatDate(nextWeek);
+
+  // Add date validation
+  document.getElementById('start-date').addEventListener('change', validateDates);
+  document.getElementById('end-date').addEventListener('change', validateDates);
 });
+
+// Helper function to format date as YYYY-MM-DD
+function formatDate(date) {
+  return date.toISOString().split('T')[0];
+}
+
+// Validate that end date is after start date
+function validateDates() {
+  const startDate = new Date(document.getElementById('start-date').value);
+  const endDate = new Date(document.getElementById('end-date').value);
+  
+  if (endDate < startDate) {
+    alert('End date must be after start date');
+    document.getElementById('end-date').value = document.getElementById('start-date').value;
+  }
+}
 
 // Function to manage saved emails
 function getSavedEmails() {
@@ -98,87 +125,110 @@ function setupAutocomplete(inputs) {
 
 async function findOverlappingMeetings() {
   try {
-    console.log('Starting authentication...');
+    const startDate = new Date(document.getElementById('start-date').value);
+    const endDate = new Date(document.getElementById('end-date').value);
     
-    // Try to get the token
-    const authResult = await chrome.identity.getAuthToken({ 
-      interactive: true 
-    });
-    
-    console.log('Auth result:', authResult);
-    
-    // Format the token properly
-    const token = authResult.token || authResult;  // handle different response formats
-    
-    if (!token) {
-      throw new Error('No token received');
-    }
-    
-    // Test the token with a simple calendar API call
-    const testResponse = await fetch(
-      'https://www.googleapis.com/calendar/v3/users/me/calendarList', {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-    
-    console.log('Test API response:', testResponse.status);
-    const testData = await testResponse.json();
-    console.log('Test API data:', testData);
-    
-    // Get all calendar emails
+    startDate.setHours(0, 0, 0, 0);
+    endDate.setHours(23, 59, 59, 999);
+
     const calendarInputs = Array.from(document.getElementsByClassName('calendar-input'));
     const calendarEmails = calendarInputs
       .map(input => input.value.trim())
       .filter(email => email !== '');
 
-    // Save valid emails
-    calendarEmails.forEach(saveEmail);
-
     if (calendarEmails.length < 2) {
       document.getElementById('results').innerHTML = 'Please enter at least 2 email addresses';
       return;
     }
-    
-    const now = new Date();
-    const oneWeekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-    
-    // Fetch all calendars' events
-    const allCalendarEvents = await Promise.all(
-      calendarEmails.map(email => 
-        fetchCalendarEvents(email, now, oneWeekFromNow, token)
-      )
-    );
-    
-    // Find overlapping events across all calendars
+
+    console.log('Getting auth token...');
+    // Modified auth token request
+    const authResult = await new Promise((resolve, reject) => {
+      chrome.identity.getAuthToken({ 
+        interactive: true,
+        scopes: ['https://www.googleapis.com/auth/calendar.readonly']
+      }, function(token) {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else {
+          resolve(token);
+        }
+      });
+    });
+
+    if (!authResult) {
+      throw new Error('Failed to get authentication token');
+    }
+
+    console.log('Token received:', authResult ? 'Yes' : 'No');
+
+    // Modify fetchCalendarEvents calls to use proper token format
+    const allCalendarEvents = [];
+    for (const email of calendarEmails) {
+      try {
+        const events = await fetchCalendarEvents(
+          email, 
+          startDate, 
+          endDate, 
+          authResult  // Pass the token directly
+        );
+        allCalendarEvents.push(events);
+      } catch (error) {
+        console.error('Error fetching calendar for', email, error);
+        document.getElementById('results').innerHTML += `<br>Error fetching calendar for ${email}: ${error.message}`;
+      }
+    }
+
+    if (allCalendarEvents.length < 2) {
+      throw new Error('Could not fetch enough calendars to compare');
+    }
+
     const overlappingMeetings = findMultiCalendarOverlaps(allCalendarEvents, calendarEmails);
     displayResults(overlappingMeetings);
+
   } catch (error) {
-    console.error('Detailed error:', error);
-    document.getElementById('results').innerHTML = 'Authentication error: ' + error.message;
+    console.error('Error:', error);
+    document.getElementById('results').innerHTML = 'Error: ' + error.message;
   }
 }
 
 async function fetchCalendarEvents(calendarId, timeMin, timeMax, token) {
   try {
-    const response = await fetch(
-      `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events?` +
-      `timeMin=${timeMin.toISOString()}&timeMax=${timeMax.toISOString()}`, {
+    console.log('Fetching calendar for:', calendarId, 'from:', timeMin, 'to:', timeMax);
+    
+    const calendarUrl = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`;
+    const params = new URLSearchParams({
+      timeMin: timeMin.toISOString(),
+      timeMax: timeMax.toISOString(),
+      singleEvents: true,
+      orderBy: 'startTime'
+    });
+    
+    const url = `${calendarUrl}?${params.toString()}`;
+    console.log('Request URL:', url);
+    
+    const response = await fetch(url, {
       headers: {
-        'Authorization': `Bearer ${token}`
+        'Authorization': `Bearer ${token}`,  // Token should be correct now
+        'Accept': 'application/json'
       }
     });
     
+    console.log('Response status:', response.status);
+    
     if (!response.ok) {
-      throw new Error('Failed to fetch calendar events');
+      const errorData = await response.json();
+      console.error('API Error Response:', errorData);
+      throw new Error(`Calendar API error: ${errorData.error?.message || response.statusText}`);
     }
     
     const data = await response.json();
-    console.log('Calendar data for', calendarId, ':', data);  // Debug log
+    console.log('Successfully fetched events for:', calendarId, 'Count:', data.items?.length);
+    
     return data.items || [];
   } catch (error) {
-    console.error('Error fetching calendar:', calendarId, error);
-    throw error;
+    console.error('Error fetching calendar for:', calendarId, error);
+    throw new Error(`Failed to fetch calendar events for ${calendarId}: ${error.message}`);
   }
 }
 

@@ -17,10 +17,25 @@
       margin: 5px 0;
       width: 100%;
     }
+    .date-range {
+      margin: 10px 0;
+      padding: 10px;
+      background: #f5f5f5;
+      border-radius: 4px;
+    }
+    .date-input {
+      margin: 5px;
+      padding: 5px;
+    }
   </style>
 </head>
 <body>
   <h2>Calendar Overlap Finder</h2>
+  <div class="date-range">
+    <label>Date Range:</label><br>
+    <input type="date" id="start-date" class="date-input">
+    <input type="date" id="end-date" class="date-input">
+  </div>
   <div id="calendar-inputs">
     <div>
       <input type="email" class="calendar-input" placeholder="First colleague's email">
