@@ -2,7 +2,99 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('findOverlaps').addEventListener('click', findOverlappingMeetings);
   document.getElementById('addCalendar').addEventListener('click', addCalendarInput);
   let calendarCount = 2;  // Start with 2 inputs
+  
+  // Set up autocomplete for initial inputs
+  setupAutocomplete(document.querySelectorAll('.calendar-input'));
 });
+
+// Function to manage saved emails
+function getSavedEmails() {
+  const saved = localStorage.getItem('savedEmails');
+  return saved ? JSON.parse(saved) : [];
+}
+
+function saveEmail(email) {
+  if (!email) return;
+  
+  let emails = getSavedEmails();
+  if (!emails.includes(email)) {
+    emails.push(email);
+    localStorage.setItem('savedEmails', JSON.stringify(emails));
+  }
+}
+
+// Function to set up autocomplete for an input
+function setupAutocomplete(inputs) {
+  inputs.forEach(input => {
+    // Create dropdown container
+    const wrapper = document.createElement('div');
+    wrapper.style.position = 'relative';
+    input.parentNode.insertBefore(wrapper, input);
+    wrapper.appendChild(input);
+
+    const dropdown = document.createElement('div');
+    dropdown.className = 'email-dropdown';
+    wrapper.appendChild(dropdown);
+
+    // Add styles for dropdown
+    const style = document.createElement('style');
+    style.textContent = `
+      .email-dropdown {
+        display: none;
+        position: absolute;
+        width: 100%;
+        max-height: 150px;
+        overflow-y: auto;
+        border: 1px solid #ddd;
+        border-top: none;
+        background: white;
+        z-index: 1000;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+      .email-option {
+        padding: 8px;
+        cursor: pointer;
+      }
+      .email-option:hover {
+        background-color: #f0f0f0;
+      }
+    `;
+    document.head.appendChild(style);
+
+    // Input event handlers
+    input.addEventListener('input', () => {
+      const value = input.value.toLowerCase();
+      const emails = getSavedEmails();
+      const matches = emails.filter(email => 
+        email.toLowerCase().includes(value)
+      );
+
+      if (matches.length && value) {
+        dropdown.style.display = 'block';
+        dropdown.innerHTML = matches
+          .map(email => `<div class="email-option">${email}</div>`)
+          .join('');
+      } else {
+        dropdown.style.display = 'none';
+      }
+    });
+
+    // Click handler for dropdown options
+    dropdown.addEventListener('click', (e) => {
+      if (e.target.classList.contains('email-option')) {
+        input.value = e.target.textContent;
+        dropdown.style.display = 'none';
+      }
+    });
+
+    // Hide dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!wrapper.contains(e.target)) {
+        dropdown.style.display = 'none';
+      }
+    });
+  });
+}
 
 async function findOverlappingMeetings() {
   try {
@@ -35,9 +127,13 @@ async function findOverlappingMeetings() {
     console.log('Test API data:', testData);
     
     // Get all calendar emails
-    const calendarEmails = Array.from(document.getElementsByClassName('calendar-input'))
-      .map(input => input.value)
-      .filter(email => email.trim() !== '');
+    const calendarInputs = Array.from(document.getElementsByClassName('calendar-input'));
+    const calendarEmails = calendarInputs
+      .map(input => input.value.trim())
+      .filter(email => email !== '');
+
+    // Save valid emails
+    calendarEmails.forEach(saveEmail);
 
     if (calendarEmails.length < 2) {
       document.getElementById('results').innerHTML = 'Please enter at least 2 email addresses';
@@ -213,5 +309,8 @@ function addCalendarInput() {
     <input type="email" class="calendar-input" placeholder="Colleague's email #${calendarCount + 1}">
   `;
   document.getElementById('calendar-inputs').appendChild(inputDiv);
+  
+  // Set up autocomplete for the new input
+  setupAutocomplete(inputDiv.querySelectorAll('.calendar-input'));
   calendarCount++;
 }
