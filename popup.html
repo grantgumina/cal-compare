@@ -4,68 +4,249 @@
   <title>Calendar Overlap Finder</title>
   <style>
     body {
-      width: 400px;
-      padding: 10px;
+      width: 480px;
+      padding: 20px;
+      font-family: 'Google Sans', 'Segoe UI', Roboto, Arial, sans-serif;
+      margin: 0;
+      background: #f8f9fa;
+      color: #3c4043;
     }
-    .meeting {
-      margin: 10px 0;
-      padding: 10px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
+
+    h2 {
+      margin: 0 0 20px 0;
+      color: #1a73e8;
+      font-weight: 500;
     }
-    .calendar-input {
-      margin: 5px 0;
-      width: 100%;
+
+    .container {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
+
     .date-range {
-      margin: 10px 0;
-      padding: 10px;
-      background: #f5f5f5;
-      border-radius: 4px;
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 8px;
     }
+
     .date-input {
-      margin: 5px;
-      padding: 5px;
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid #dadce0;
+      border-radius: 6px;
+      font-size: 14px;
+      color: #3c4043;
+      transition: border-color 0.2s;
     }
+
+    .date-input:focus {
+      outline: none;
+      border-color: #1a73e8;
+    }
+
+    #calendar-inputs {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .calendar-input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #dadce0;
+      border-radius: 6px;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+
+    .calendar-input:focus {
+      outline: none;
+      border-color: #1a73e8;
+      box-shadow: 0 0 0 2px rgba(26,115,232,0.1);
+    }
+
     .email-dropdown {
       display: none;
       position: absolute;
       width: 100%;
-      max-height: 150px;
+      max-height: 200px;
       overflow-y: auto;
-      border: 1px solid #ddd;
-      border-top: none;
       background: white;
+      border: 1px solid #dadce0;
+      border-radius: 6px;
+      margin-top: 4px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
       z-index: 1000;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
+
     .email-option {
-      padding: 8px;
+      padding: 10px 12px;
       cursor: pointer;
+      transition: background-color 0.2s;
     }
+
     .email-option:hover {
-      background-color: #f0f0f0;
+      background-color: #f1f3f4;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    button {
+      padding: 10px 16px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    #findOverlaps {
+      background: #1a73e8;
+      color: white;
+    }
+
+    #findOverlaps:hover {
+      background: #1557b0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+
+    #addCalendar {
+      background: #f1f3f4;
+      color: #3c4043;
+    }
+
+    #addCalendar:hover {
+      background: #e8eaed;
+    }
+
+    /* Results styling */
+    .results-container {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .stats-card, .meetings-card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      padding: 20px;
+    }
+
+    .stats-card h3, .meetings-card h3 {
+      margin: 0 0 16px 0;
+      color: #1a73e8;
+      font-weight: 500;
+    }
+
+    .stat-item {
+      display: flex;
+      justify-content: space-between;
+      margin: 10px 0;
+      padding: 12px;
+      background: #f8f9fa;
+      border-radius: 8px;
+    }
+
+    .person-stat {
+      margin: 15px 0;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 8px;
+    }
+
+    .email {
+      font-weight: 500;
+      margin-bottom: 10px;
+      color: #1a73e8;
+    }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      margin: 6px 0;
+    }
+
+    .stat-label {
+      color: #5f6368;
+    }
+
+    .stat-value {
+      font-weight: 500;
+      color: #1a73e8;
+    }
+
+    .progress-bar {
+      height: 4px;
+      background: #e8eaed;
+      border-radius: 2px;
+      margin-top: 10px;
+      overflow: hidden;
+    }
+
+    .progress {
+      height: 100%;
+      background: #1a73e8;
+      border-radius: 2px;
+      transition: width 0.3s ease;
+    }
+
+    .meeting {
+      margin: 10px 0;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      transition: transform 0.2s;
+    }
+
+    .meeting:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .meeting-time {
+      color: #5f6368;
+      font-size: 0.9em;
+      margin-top: 8px;
     }
   </style>
 </head>
 <body>
-  <h2>Calendar Overlap Finder</h2>
-  <div class="date-range">
-    <label>Date Range:</label><br>
-    <input type="date" id="start-date" class="date-input">
-    <input type="date" id="end-date" class="date-input">
-  </div>
-  <div id="calendar-inputs">
-    <div>
-      <input type="email" class="calendar-input" placeholder="First colleague's email">
+  <div class="container">
+    <h2>Calendar Overlap Finder</h2>
+    
+    <div class="date-range">
+      <input type="date" id="start-date" class="date-input">
+      <input type="date" id="end-date" class="date-input">
     </div>
-    <div>
-      <input type="email" class="calendar-input" placeholder="Second colleague's email">
+
+    <div id="calendar-inputs">
+      <div>
+        <input type="email" class="calendar-input" placeholder="First colleague's email">
+      </div>
+      <div>
+        <input type="email" class="calendar-input" placeholder="Second colleague's email">
+      </div>
     </div>
+
+    <div class="button-group">
+      <button id="findOverlaps">Find Overlapping Meetings</button>
+      <button id="addCalendar">Add Calendar</button>
+    </div>
+
+    <div id="results"></div>
   </div>
-  <button id="addCalendar">Add Another Calendar</button>
-  <button id="findOverlaps">Find Overlapping Meetings</button>
-  <div id="results"></div>
   <script src="popup.js"></script>
 </body>
 </html>

@@ -178,7 +178,7 @@ async function findOverlappingMeetings() {
     }
 
     const overlappingMeetings = findMultiCalendarOverlaps(allCalendarEvents, calendarEmails);
-    displayResults(overlappingMeetings);
+    displayResults(overlappingMeetings, allCalendarEvents);
 
   } catch (error) {
     console.error('Error:', error);
@@ -239,22 +239,21 @@ function isCommonOverlap(timeSlot, eventsList) {
   );
 }
 
+function isAllDayEvent(event) {
+  // All-day events use 'date' instead of 'dateTime' in their start/end times
+  return !event.start.dateTime || !event.end.dateTime;
+}
+
 function findMultiCalendarOverlaps(allEvents, emails) {
   const overlaps = [];
   
-  // Filter out any invalid events and log them
+  // Filter out all-day events from all calendars first
   const validEvents = allEvents.map(calendarEvents => 
-    calendarEvents.filter(event => {
-      if (!event.start || !event.end) {
-        console.warn('Invalid event found:', event);
-        return false;
-      }
-      return true;
-    })
+    calendarEvents.filter(event => !isAllDayEvent(event))
   );
 
   // Debug log
-  console.log('Processing events:', validEvents);
+  console.log('Events after filtering all-day events:', validEvents);
   
   validEvents[0].forEach(baseEvent => {
     const start = getEventTime(baseEvent.start);
@@ -265,7 +264,6 @@ function findMultiCalendarOverlaps(allEvents, emails) {
       return;
     }
 
-    // Check if this time slot overlaps with events from all other calendars
     if (isCommonOverlap({ start, end }, validEvents.slice(1))) {
       const overlappingEvents = validEvents.map((events, index) => {
         const event = events.find(e => 
@@ -276,7 +274,7 @@ function findMultiCalendarOverlaps(allEvents, emails) {
         );
         return {
           email: emails[index],
-          title: event?.summary || 'Busy',  // Handle events without titles
+          title: event?.summary || 'Busy',
           start: getEventTime(event?.start),
           end: getEventTime(event?.end)
         };
@@ -327,24 +325,98 @@ function getEventTime(timeObj) {
   return new Date(timeString);
 }
 
-function displayResults(overlappingMeetings) {
+// Update calculateStats to also exclude all-day events
+function calculateStats(overlappingMeetings, allEvents) {
+  // Calculate total overlap duration in hours
+  const totalOverlapHours = overlappingMeetings.reduce((total, meeting) => {
+    const duration = (meeting.end - meeting.start) / (1000 * 60 * 60);
+    return total + duration;
+  }, 0);
+
+  // Calculate total meeting hours per person (excluding all-day events)
+  const personStats = {};
+  allEvents.forEach((events, index) => {
+    const regularEvents = events.filter(event => !isAllDayEvent(event));
+    const email = regularEvents[0]?.organizer?.email || 'Unknown';
+    const totalHours = regularEvents.reduce((total, event) => {
+      const start = getEventTime(event.start);
+      const end = getEventTime(event.end);
+      const duration = (end - start) / (1000 * 60 * 60);
+      return total + duration;
+    }, 0);
+    personStats[email] = totalHours;
+  });
+
+  return {
+    totalOverlapHours: totalOverlapHours.toFixed(1),
+    personStats: Object.entries(personStats).map(([email, hours]) => ({
+      email,
+      totalHours: hours.toFixed(1),
+      overlapPercentage: ((totalOverlapHours / hours) * 100).toFixed(1)
+    }))
+  };
+}
+
+function displayResults(overlappingMeetings, allEvents) {
   const resultsDiv = document.getElementById('results');
+  const stats = calculateStats(overlappingMeetings, allEvents);
+  
+  const dateRange = `${document.getElementById('start-date').value} and ${document.getElementById('end-date').value}`;
   
   if (overlappingMeetings.length === 0) {
-    resultsDiv.innerHTML = 'No overlapping meetings found';
+    resultsDiv.innerHTML = `
+      <div class="results-container">
+        <div class="stats-card">
+          <h3>No overlapping meetings found between ${dateRange}</h3>
+        </div>
+      </div>
+    `;
     return;
   }
   
-  resultsDiv.innerHTML = overlappingMeetings
-    .map(meeting => `
-      <div class="meeting">
-        ${meeting.events.map(event => 
-          `<div>${event.email}: ${event.title}</div>`
-        ).join('')}
-        <div>Overlap time: ${meeting.start.toLocaleString()} - ${meeting.end.toLocaleString()}</div>
+  resultsDiv.innerHTML = `
+    <div class="results-container">
+      <div class="stats-card">
+        <h3>Meeting Statistics</h3>
+        <div class="stat-item">
+          <span class="stat-label">Total Shared Meeting Time:</span>
+          <span class="stat-value">${stats.totalOverlapHours} hours</span>
+        </div>
+        <div class="stat-details">
+          ${stats.personStats.map(person => `
+            <div class="person-stat">
+              <div class="email">${person.email}</div>
+              <div class="stat-row">
+                <span class="stat-label">Total Meeting Hours:</span>
+                <span class="stat-value">${person.totalHours}</span>
+              </div>
+              <div class="stat-row">
+                <span class="stat-label">Shared Meeting %:</span>
+                <span class="stat-value">${person.overlapPercentage}%</span>
+              </div>
+              <div class="progress-bar">
+                <div class="progress" style="width: ${person.overlapPercentage}%"></div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
       </div>
-    `)
-    .join('');
+
+      <div class="meetings-card">
+        <h3>Overlapping Meetings (${overlappingMeetings.length})</h3>
+        ${overlappingMeetings.map(meeting => `
+          <div class="meeting">
+            ${meeting.events.map(event => 
+              `<div>${event.email}: ${event.title}</div>`
+            ).join('')}
+            <div class="meeting-time">
+              ${meeting.start.toLocaleString()} - ${meeting.end.toLocaleString()}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
 }
 
 function addCalendarInput() {
