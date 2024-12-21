@@ -1,7 +1,8 @@
+let calendarCount = 2;  // Start with 2 since we begin with 2 input fields
+
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('findOverlaps').addEventListener('click', findOverlappingMeetings);
   document.getElementById('addCalendar').addEventListener('click', addCalendarInput);
-  let calendarCount = 2;  // Start with 2 inputs
   
   // Set up autocomplete for initial inputs
   setupAutocomplete(document.querySelectorAll('.calendar-input'));
