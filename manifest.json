@@ -5,11 +5,10 @@
     "description": "Find overlapping meetings between two calendars",
     "permissions": [
       "identity",
-      "identity.email",
-      "calendar"
+      "identity.email"
     ],
     "oauth2": {
-      "client_id": "YOUR_CLIENT_ID_HERE",
+      "client_id": "307953553161-eme3i1q8m7e6c9ed0dcikef1mnmlgrak.apps.googleusercontent.com",
       "scopes": [
         "https://www.googleapis.com/auth/calendar.readonly"
       ]
